@@ -58,9 +58,9 @@ class ThreadRunner implements Runnable
     // their favorite words! Some of his guests are strange, and have favorite
     // words like 'aaaaaaa' and 'djfnjknsadfg'
 
-    System.out.println(unsortedGifts.poll());
-    System.out.println(unsortedGifts.poll());
-    System.out.println(unsortedGifts.poll());
+    // System.out.println(unsortedGifts.poll());
+    // System.out.println(unsortedGifts.poll());
+    // System.out.println(unsortedGifts.poll());
     giftChain = new GiftList();
   }
 
@@ -72,9 +72,9 @@ class ThreadRunner implements Runnable
       // Servants are asked to alternate adding and removing gifts
 
       // Simulate picking a unsorted gift by generating a random gift
-      // giftChain.add(unsortedGifts.poll());
+      giftChain.add(unsortedGifts.poll());
 
-      // giftChain.remove();
+      giftChain.pop();
     }
   }
 
