@@ -8,14 +8,18 @@ public class MinotaurGifts
 {
   public static void main(String[] args)
   {
-    int numServants = 1;
+    int numServants = 4;
+    int numGifts = 500000;
 
-    ThreadRunner threadRunner = new ThreadRunner(4, 500000);
+    ThreadRunner threadRunner = new ThreadRunner(numServants, numGifts);
     ArrayList<Thread> servants = new ArrayList<>();
 
     for (int i = 0; i < numServants; i++)
       servants.add(new Thread(threadRunner));
 
+    System.out.println("Preparing to sort " + numGifts + " gifts with " + numServants
+                        + " servants...");
+    long start = System.currentTimeMillis();
     for(Thread servant : servants)
       servant.start();
 
@@ -26,10 +30,12 @@ public class MinotaurGifts
     }
     catch(Exception e)
     {
-
+      System.out.println("Failed to join threads!");
+      System.out.println(e);
     }
 
-    // Window test = Window.find(null, 0);
+    System.out.println("All thank you cards have been written!");
+    System.out.println("Total runtime: " + (System.currentTimeMillis() - start) + "ms");
   }
 
 
@@ -74,6 +80,9 @@ class ThreadRunner implements Runnable
       // Simulate picking a unsorted gift by generating a random gift
       giftChain.add(unsortedGifts.poll());
 
+      // Pop simply calls remove() on the first gift in the chain. Unless
+      // the servants get instructions to remove a gift, they just remove
+      // the first one, to ensure that all gifts are removed.
       giftChain.pop();
     }
   }
@@ -100,8 +109,6 @@ class ThreadRunner implements Runnable
             }
 
     return bag;
-    // Collections.shuffle(bag);
-
   }
 }
 
@@ -158,7 +165,10 @@ class GiftList
           if (!snip)
             continue retry;
           curr = succ;
-          succ = curr.next.get(marked);
+          if (curr.next == null)
+            ;
+          else
+            succ = curr.next.get(marked);
         }
         if (curr.key >= key)
           return new Window(pred, curr);
@@ -194,7 +204,10 @@ class GiftList
           Node node = new Node(gift);
           node.next = new AtomicMarkableReference<Node>(curr, false);
           if (pred.next.compareAndSet(curr, node, false, false))
-            {System.out.println("Added " + gift);return true;}
+            {
+              // System.out.println("Added " + gift);
+              return true;
+            }
         }
     }
   }
@@ -218,7 +231,7 @@ class GiftList
         if (!snip)
           continue;
         pred.next.compareAndSet(curr, succ, false, false);
-        System.out.println("Removed " + gift);
+        // System.out.println("Removed " + gift);
         return true;
       }
     }

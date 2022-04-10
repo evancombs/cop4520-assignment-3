@@ -7,4 +7,38 @@ the chain to a present another servant is in the midst of removing, losing the p
 past that point!
 * When removing a present, another servant could have tried to add a present after the
 removed present, losing that present they just added!
-These are just a few examples; even more could have gone wrong
+These are just a few examples; even more could have gone wrong, but it all depends
+on how these issues were handled.
+
+In developing a concurrent linked list to solve the Minotaur's problem, we must
+take a look at the requirements he requested. Notably:
+* The servants should not take breaks
+* The servants should alternate adding and removing presents from the chain
+* And as evidenced by the Minotaur's initial problem, the list must be able to
+handle multiple adders and deleters.
+Given this, I have chosen to implement a modified version of the LockFreeList from
+The Art of Multiprocessor Programming as the solution to the Minotaur's problem.
+It
+
+
+#### Problem 2: Atmospheric Temperature Reading Module
+To approach this problem, we must develop both a method to simulate / track time,
+handle the temperature reading at set intervals, and compile a report when
+sufficient time has elapsed.
+
+To handle time, each thread runs in a infinite loop, where one iteration is considered
+one minute passing; thus, if each thread takes a reading once per loop, we simulate
+a reading every minute. We elect one thread to be the "leader", which is responsible
+for tracking when one hour has elapsed, and compiling a report at that time. We
+perform this report making atomically.
+
+To handle information about temperature readings, we will create a structure that
+holds some metadata about the reading; namely, the sensor that recorded it and
+the time at which it was recorded. This is important, because sensors may continue to
+record data while the leader is compiling a report; we need to discard this data,
+because it is *not* from the hour of interest.
+
+Finally, to handle the log of readings, we use java's ConcurrentLinkedQueue.
+ConcurrentLinkedQueue is already highly optimized and wait-free for non-iterator
+functionality. The functionality we require is adding and retrieving the data as
+an array, making it a good choice for this application.
