@@ -8,7 +8,7 @@ public class MinotaurGifts
 {
   public static void main(String[] args)
   {
-    int numServants = 4;
+    int numServants = 1;
 
     ThreadRunner threadRunner = new ThreadRunner(4, 500000);
     ArrayList<Thread> servants = new ArrayList<>();
@@ -140,13 +140,18 @@ class GiftList
     boolean[] marked = {false};
     boolean snip;
 
-    while(true)
+    retry: while(true)
     {
       pred = head;
+      // System.out.println(pred.gift);
+      // System.out.println(pred.next.getReference().gift);
       curr = pred.next.getReference();
-      retry: while(true)
+      while(true)
       {
-        succ = curr.next.get(marked);
+        if (curr.next == null)
+          ;
+        else
+          succ = curr.next.get(marked);
         while(marked[0])
         {
           snip = pred.next.compareAndSet(curr, succ, false, false);
@@ -163,6 +168,16 @@ class GiftList
     }
   }
 
+  public GiftList()
+  {
+    head = new Node("HEAD");
+    head.key = Integer.MIN_VALUE;
+
+    Node tail = new Node("TAIL");
+    tail.key = Integer.MAX_VALUE;
+
+    head.next = new AtomicMarkableReference<Node>(tail, false);
+  }
   public boolean add(String gift)
   {
     int key = gift.hashCode();
@@ -179,7 +194,7 @@ class GiftList
           Node node = new Node(gift);
           node.next = new AtomicMarkableReference<Node>(curr, false);
           if (pred.next.compareAndSet(curr, node, false, false))
-            return true;
+            {System.out.println("Added " + gift);return true;}
         }
     }
   }
@@ -203,6 +218,7 @@ class GiftList
         if (!snip)
           continue;
         pred.next.compareAndSet(curr, succ, false, false);
+        System.out.println("Removed " + gift);
         return true;
       }
     }
