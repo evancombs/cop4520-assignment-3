@@ -15,7 +15,7 @@ public class RoverTemperature
     int numThreads = 8;
     int hoursToRecord = 1;
 
-    ThreadRunner rover = new ThreadRunner(hoursToRecord);
+    ThreadRunner rover = new ThreadRunner(numThreads, hoursToRecord);
     ArrayList<Thread> sensors = new ArrayList<>();
 
     for (int i = 0; i < numThreads; i++)
@@ -31,6 +31,7 @@ public class RoverTemperature
 class ThreadRunner implements Runnable
 {
   int maxTime;
+  int numSensors;
   ConcurrentLinkedQueue<Reading> log;
 
   // Reading is a data structure to hold information about a temperature reading,
@@ -50,9 +51,10 @@ class ThreadRunner implements Runnable
   }
 
   // Maxtime is the maximum number of hours to collect data for
-  public ThreadRunner(int maxTime)
+  public ThreadRunner(int numSensors, int maxTime)
   {
     this.maxTime = maxTime;
+    this.numSensors = numSensors;
     log = new ConcurrentLinkedQueue<Reading>();
   }
 
@@ -83,7 +85,7 @@ class ThreadRunner implements Runnable
       if(time >= 60)
       {
         if(leader)
-          CompileReport();
+          CompileReport(hoursElapsed);
         time = 0;
         hoursElapsed++;
       }
@@ -93,67 +95,105 @@ class ThreadRunner implements Runnable
 
   }
 
-  public void CompileReport()
+  public void CompileReport(int currentHour)
   {
+    boolean debug = false;
     // Note: size is NOT a constant time method, as it may be modified
-    synchronized(this)
+
+    System.out.println("Thread " + Thread.currentThread().getName() + " compiling a report...");
+    int logSize = log.size();
+    System.out.println("There are " + logSize + " readings recorded.");
+    Reading[] readings = log.toArray(new Reading[logSize]);
+
+    // We only care about unique temperatures recorded
+    // A true value means that temperature was recorded
+    // We also check that the time on the sensor is within the current hour,
+    // necesary as the threads may continue to collect data during report compilation
+    boolean[] temperatures = new boolean[171];
+    for (int i = 0; i < logSize; i++)
     {
-      System.out.println("Thread " + Thread.currentThread().getName() + " compiling a report...");
-      int logSize = log.size();
-      System.out.println("There are " + logSize + " readings recorded.");
-      Reading[] readings = log.toArray(new Reading[logSize]);
-
-      // ArrayList<Integer> temperatures = new ArrayList<Integer>(logSize);
-      // We only care about unique temperatures recorded
-      // A true value means that temperature was recorded
-      boolean[] temperatures = new boolean[171];
-      for (int i = 0; i < logSize; i++)
-      {
-        // temperatures.add(readings[i].temperature);
-        // if (readings[i].tempe)
-        temperatures[readings[i].temperature + 100] = true;
-      }
-
-      // Collections.sort(temperatures);
-      // Arrays.sort(temperatures);
-      System.out.println("5 Lowest Recorded Temperatures:");
-      int count = 0, temp = 0;
-      while (count < 5)
-      {
-        if (temperatures[temp])
-        {
-          System.out.println((count + 1) + ": " + (temp - 100) + "F");
-          count++;
-        }
-        temp++;
-      }
-      System.out.println("5 Highest Recorded Temperatures:");
-      count = 0;
-      temp = 170;
-      while (count < 5)
-      {
-        if (temperatures[temp])
-        {
-          System.out.println((count + 1) + ": " + (temp - 100) + "F");
-          count++;
-        }
-        temp--;
-      }
-
-      int maxDifferenceTime = 0;
-      System.out.println("Time period of most temperature difference:");
-      
-      /*
-      for (int i = 0; i < temperatures.size() - 10; i++)
-      {
-        if (Math.abs(temperatures.get(i) - temperatures.get(i + 1)) >
-            Math.abs(temperatures.get(maxDifferenceTime) - temperatures.get(maxDifferenceTime + 1)))
-          maxDifferenceTime = i;
-      }
-      System.out.println("Times " + maxDifferenceTime + " - " + maxDifferenceTime + 10);
-      */
+      if (readings[i].time / 60 == currentHour) // This reading was taken after this hour, so discard
+        continue;
+      temperatures[readings[i].temperature + 100] = true;
     }
+
+    // Collections.sort(temperatures);
+    // Arrays.sort(temperatures);
+    System.out.println("5 Lowest Recorded Temperatures:");
+    int count = 0, temp = 0;
+    while (count < 5)
+    {
+      if (temperatures[temp])
+      {
+        System.out.println((count + 1) + ": " + (temp - 100) + "F");
+        count++;
+      }
+      temp++;
+    }
+    System.out.println("5 Highest Recorded Temperatures:");
+    count = 0;
+    temp = 170;
+    while (count < 5)
+    {
+      if (temperatures[temp])
+      {
+        System.out.println((count + 1) + ": " + (temp - 100) + "F");
+        count++;
+      }
+      temp--;
+    }
+
+    // Now we must find what temperatures each sensor recorded at each time
+    // We know that for a 1 hour report, we should have 480 readings
+    // The first dimension holds the time, while the second dimension represents the sensor
+    int[][] temperatureTimes = new int[60][numSensors];
+    for (int i = 0; i < readings.length; i++)
+    {
+      if (readings[i].time / 60 == currentHour) // If the reading occured during this hour's report=
+        temperatureTimes[readings[i].time][readings[i].sensorID] = readings[i].temperature;
+    }
+
+    int maxDifferenceTime = 0;
+    int maxDifference = 0;
+    System.out.println("Time period of most temperature difference:");
+
+    if (debug) // Debugging
+    {
+      for (int i = 0; i < 60; i++)
+      {
+        System.out.println("Time " + i + ": ");
+        for (int j = 0; j < numSensors; j++)
+        {
+          System.out.println("   Sensor " + j + ": " + temperatureTimes[i][j]);
+        }
+      }
+    }
+    // We compare sensors against their own readings to find the greatest difference
+    // at each possible time
+    int sensor = -1;
+    for (int i = 0; i < 50; i++)
+    {
+      for (int j = 0; j < numSensors; j++)
+      {
+        // If the difference in temperature in 10 minutes on this sensor is
+        // larger than the largest difference prevously recorded
+        if (Math.abs(temperatureTimes[i + 10][j] - temperatureTimes[i][j]) >
+            maxDifference)
+          {
+            maxDifference = Math.abs(temperatureTimes[i + 10][j] - temperatureTimes[i][j]);
+            maxDifferenceTime = i;
+            sensor = j;
+          }
+      }
+    }
+
+    System.out.println("Ten minute period from " + currentHour + ":"  + maxDifferenceTime
+                        + " - " + currentHour + ":" + (maxDifferenceTime + 10)
+                        + ", with a temperature difference of " +
+                        Math.abs(temperatureTimes[maxDifferenceTime + 10][sensor] - temperatureTimes[maxDifferenceTime][sensor]) + "F!");
+    System.out.println("Data collected on sensor " + sensor);
   }
+
 
 
   // Generates a random integer in [-100,70] to simulate a temperature reading
