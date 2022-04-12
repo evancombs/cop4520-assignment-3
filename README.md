@@ -1,5 +1,5 @@
 # cop4520-assignment-3
-#### Problem 1: The Birthday Presents Party
+## Problem 1: The Birthday Presents Party
 Compile with:
   ```"javac MinotaurGifts.java"```
 
@@ -36,7 +36,7 @@ explicit instructions to remove a particular gift. This allows us to avoid maint
 another concurrent structure of gifts to be removed.
 
 
-#### Problem 2: Atmospheric Temperature Reading Module
+## Problem 2: Atmospheric Temperature Reading Module
 Compile with:
   ```"javac RoverTemperature.java"```
 
